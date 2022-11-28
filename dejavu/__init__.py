@@ -4,7 +4,9 @@ import sys
 import traceback
 from itertools import groupby
 from time import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
+
+from dejavu.database_handler.postgres_database import PostgreSQLDatabase
 
 import dejavu.logic.decoder as decoder
 from dejavu.base_classes.base_database import get_database
@@ -19,6 +21,8 @@ from dejavu.logic.fingerprint import fingerprint
 
 
 class Dejavu:
+    db: PostgreSQLDatabase
+
     def __init__(self, config):
         self.config = config
 
@@ -118,7 +122,7 @@ class Dejavu:
         pool.close()
         pool.join()
 
-    def fingerprint_file(self, file_path: str, song_name: str = None) -> None:
+    def fingerprint_file(self, file_path: str, song_name: str = None) -> Optional[Tuple[int, str, str, int]]:
         """
         Given a path to a file the method generates hashes for it and stores them in the database
         for later be queried.
@@ -132,17 +136,21 @@ class Dejavu:
         # don't refingerprint already fingerprinted files
         if song_hash in self.songhashes_set:
             print(f"{song_name} already fingerprinted, continuing...")
+            return None
         else:
             song_name, hashes, file_hash = Dejavu._fingerprint_worker(
                 file_path,
                 self.limit,
                 song_name=song_name
             )
-            sid = self.db.insert_song(song_name, file_hash)
+            hashes_count = len(hashes)
+            sid = self.db.insert_song(song_name, file_hash, hashes_count)
 
             self.db.insert_hashes(sid, hashes)
             self.db.set_song_fingerprinted(sid)
             self.__load_fingerprinted_audio_hashes()
+
+        return sid, song_name, file_hash, hashes_count
 
     def generate_fingerprints(self, samples: List[int], Fs=DEFAULT_FS) -> Tuple[List[Tuple[str, int]], float]:
         f"""
@@ -226,7 +234,7 @@ class Dejavu:
         return r.recognize(*options, **kwoptions)
 
     @staticmethod
-    def _fingerprint_worker(arguments):
+    def _fingerprint_worker(*arguments, song_name: str = None):
         # Pool.imap sends arguments as tuples so we have to unpack
         # them ourself.
         try:
@@ -234,7 +242,8 @@ class Dejavu:
         except ValueError:
             pass
 
-        song_name, extension = os.path.splitext(os.path.basename(file_name))
+        if song_name is None:
+            song_name = os.path.splitext(os.path.basename(file_name))[0]
 
         fingerprints, file_hash = Dejavu.get_file_fingerprints(file_name, limit, print_output=True)
 

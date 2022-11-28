@@ -1,7 +1,7 @@
 import fnmatch
 import os
 from hashlib import sha1
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from pydub import AudioSegment
@@ -51,7 +51,7 @@ def find_files(path: str, extensions: List[str]) -> List[Tuple[str, str]]:
     return results
 
 
-def read(file_name: str, limit: int = None) -> Tuple[List[List[int]], int, str]:
+def read(file_name: str, limit: int = None, file_hash: Optional[str] = None, lz4: bool = False) -> Tuple[List[List[int]], int, str]:
     """
     Reads any file supported by pydub (ffmpeg) and returns the data contained
     within. If file reading fails due to input being a 24-bit wav file,
@@ -92,7 +92,7 @@ def read(file_name: str, limit: int = None) -> Tuple[List[List[int]], int, str]:
         for chn in audiofile:
             channels.append(chn)
 
-    return channels, audiofile.frame_rate, unique_hash(file_name)
+    return channels, audiofile.frame_rate, file_hash if file_hash is not None else unique_hash(file_name)
 
 
 def get_audio_name_from_path(file_path: str) -> str:

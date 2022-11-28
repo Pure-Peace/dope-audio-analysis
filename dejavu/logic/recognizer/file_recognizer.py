@@ -1,5 +1,5 @@
 from time import time
-from typing import Dict
+from typing import Dict, Optional
 
 import dejavu.logic.decoder as decoder
 from dejavu.base_classes.base_recognizer import BaseRecognizer
@@ -11,7 +11,7 @@ class FileRecognizer(BaseRecognizer):
     def __init__(self, dejavu):
         super().__init__(dejavu)
 
-    def recognize_file(self, filename: str) -> Dict[str, any]:
+    def recognize_file(self, filename: str, file_hash: Optional[str] = None) -> Dict[str, any]:
         channels, self.Fs, _ = decoder.read(filename, self.dejavu.limit)
 
         t = time()
@@ -28,5 +28,5 @@ class FileRecognizer(BaseRecognizer):
 
         return results
 
-    def recognize(self, filename: str) -> Dict[str, any]:
+    def recognize(self, filename: str, file_hash: Optional[str] = None) -> Dict[str, any]:
         return self.recognize_file(filename)
