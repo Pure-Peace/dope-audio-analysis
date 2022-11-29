@@ -132,14 +132,15 @@ class WriteFileResult(Attrdict):
 async def write_file_from_readable(read_fn, file_name: str):
     async def async_read(size: int):
         return await read_fn(size)
+
     async def read(size: int):
         return read_fn(size)
-    
+
     if inspect.iscoroutinefunction(read_fn):
         rd = async_read
     else:
         rd = read
-    
+
     chunk = await rd(CHUNK_SIZE)
     try:
         f_type = filetype.audio_match(chunk)
@@ -164,7 +165,7 @@ async def write_file_from_readable(read_fn, file_name: str):
     return WriteFileResult(song_name=song_name, file_name=file_name, temp_path=temp_path, file_hash=file_hash, file_type=f_type.extension), None
 
 
-async def fingerprint_file(readable, file_name, async_handle=False):
+async def fingerprint_file(readable, file_name: str, async_handle: bool = False):
     r, err = await write_file_from_readable(readable, file_name)
     if err is not None:
         return None, err
@@ -196,7 +197,7 @@ async def fingerprint_file(readable, file_name, async_handle=False):
 
 
 @app.put('/upload_file')
-async def upload_file(audio_file: UploadFile, async_handle=False):
+async def upload_file(audio_file: UploadFile, async_handle: bool = False):
     data, err = await fingerprint_file(audio_file.read, audio_file.filename, async_handle=async_handle)
     if err is not None:
         return err
@@ -205,7 +206,7 @@ async def upload_file(audio_file: UploadFile, async_handle=False):
 
 
 @app.put('/upload_file_with_url')
-async def upload_file_with_url(url: str, async_handle=False):
+async def upload_file_with_url(url: str, async_handle: bool = False):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             if resp.status == 200:
