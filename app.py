@@ -85,10 +85,18 @@ async def recognize_with_hash(audio_hash: str):
     return JSONResponse(json.loads(json.dumps({'results': results['results']}, cls=BytesEncoder)))
 
 
-@app.get('/stats')
-async def stats():
+@app.get('/stats/service')
+async def service_stats():
     return JSONResponse({
         "directory_scanning": globs.directory_scanning,
         "inqueue_files": globs.inqueue_files,
         "pending_files": globs.pending_files
+    })
+
+
+@app.get('/stats/db')
+async def db_stats():
+    return JSONResponse({
+        "fingerprints": globs.djv.db.get_num_fingerprints(),
+        "num_songs": globs.djv.db.get_num_songs()
     })
