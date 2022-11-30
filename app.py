@@ -69,7 +69,7 @@ async def upload_file_with_url(url: str, async_handle: bool = False):
 
 @app.post('/recognize_with_file')
 async def recognize_with_file(audio_file: UploadFile):
-    data, err = await fingerprint_file(audio_file, audio_file.filename)
+    data, err = await fingerprint_file(audio_file, audio_file.filename, async_handle=True)
     if err is not None:
         return err
     results = globs.djv.recognize(
@@ -80,7 +80,7 @@ async def recognize_with_file(audio_file: UploadFile):
 
 @app.get('/recognize_with_url')
 async def recognize_with_url(url: str):
-    data, err = await fingerprint_url(url)
+    data, err = await fingerprint_url(url, async_handle=True)
     if err is not None:
         return err
 
