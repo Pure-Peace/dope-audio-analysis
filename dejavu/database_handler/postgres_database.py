@@ -7,7 +7,7 @@ from dejavu.base_classes.common_database import CommonDatabase
 from dejavu.config.settings import (FIELD_FILE_SHA1, FIELD_FINGERPRINTED,
                                     FIELD_HASH, FIELD_OFFSET, FIELD_SONG_ID,
                                     FIELD_SONGNAME, FIELD_TOTAL_HASHES,
-                                    FINGERPRINTS_TABLENAME, SONGS_TABLENAME)
+                                    FINGERPRINTS_TABLENAME, SONG_ID, SONGS_TABLENAME)
 
 
 class PostgreSQLDatabase(CommonDatabase):
@@ -86,6 +86,16 @@ class PostgreSQLDatabase(CommonDatabase):
         ,   "{FIELD_TOTAL_HASHES}"
         FROM "{SONGS_TABLENAME}"
         WHERE "{FIELD_SONG_ID}" = %s;
+    """
+    
+    SELECT_SONG_WITH_HASH = f"""
+        SELECT
+            "{FIELD_SONGNAME}"
+        ,   "{SONG_ID}"
+        ,   "{FIELD_FINGERPRINTED}"
+        ,   "{FIELD_TOTAL_HASHES}"
+        FROM "{SONGS_TABLENAME}"
+        WHERE upper(encode("{FIELD_FILE_SHA1}", 'hex')) = %s;
     """
 
     SELECT_NUM_FINGERPRINTS = f'SELECT COUNT(*) AS n FROM "{FINGERPRINTS_TABLENAME}";'

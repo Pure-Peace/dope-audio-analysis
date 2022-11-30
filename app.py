@@ -1,6 +1,5 @@
 import asyncio
 from genericpath import exists
-from tempfile import TemporaryFile
 from fastapi import FastAPI, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,10 +8,9 @@ import json
 from os import path
 from config import FILE_DIR, ORIGINS
 from dejavu.logic.recognizer.file_recognizer import FileRecognizer
-import aiohttp
 import globs
 from objects import BytesEncoder, FingerprintDirectoryWorker
-from utils import background_loop, create_dir, fingerprint_file
+from utils import background_loop, create_dir, fingerprint_file, fingerprint_url
 
 create_dir(FILE_DIR)
 
@@ -44,24 +42,29 @@ async def upload_file(audio_file: UploadFile, async_handle: bool = False):
     if err is not None:
         return err
 
-    return JSONResponse({"result": 'new' if type(data[2]) != str else data[2], "data": data[2]})
+    if type(data[2]) != str:
+        result = 'new'
+        return_data = data[2]
+    else:
+        result = data[2]
+        return_data = {'file_hash': data[1]}
+    return JSONResponse({'result':  result, 'data': return_data})
 
 
 @app.put('/upload_file_with_url')
 async def upload_file_with_url(url: str, async_handle: bool = False):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status == 200:
-                with TemporaryFile(mode="wb+") as tmp:
-                    tmp.write(await resp.read())
-                    tmp.seek(0)
-                    data, err = await fingerprint_file(tmp.read, url.split('/')[-1], async_handle=async_handle)
-                    if err is not None:
-                        return err
+    data, err = await fingerprint_url(url, async_handle=async_handle)
+    if err is not None:
+        return err
 
-                return JSONResponse({"result": 'new' if type(data[2]) != str else data[2], "data": data[2]})
-            else:
-                return JSONResponse({"result": "failed", "data": await resp.text()})
+    if type(data[2]) != str:
+        result = 'new'
+        return_data = data[2]
+    else:
+        result = data[2]
+        return_data = {'file_hash': data[1]}
+
+    return JSONResponse({'result':  result, 'data': return_data})
 
 
 @app.post('/recognize_with_file')
@@ -75,6 +78,16 @@ async def recognize_with_file(audio_file: UploadFile):
     return JSONResponse(json.loads(json.dumps({'results': results['results']}, cls=BytesEncoder)))
 
 
+@app.get('/recognize_with_url/{url}')
+async def recognize_with_url(url: str):
+    data, err = await fingerprint_url(url)
+    if err is not None:
+        return err
+
+    results = globs.djv.recognize(FileRecognizer, data[0])
+    return JSONResponse(json.loads(json.dumps({'results': results['results']}, cls=BytesEncoder)))
+
+
 @app.get('/recognize_with_hash/{audio_hash}')
 async def recognize_with_hash(audio_hash: str):
     full_path = path.join(FILE_DIR, audio_hash)
@@ -85,18 +98,32 @@ async def recognize_with_hash(audio_hash: str):
     return JSONResponse(json.loads(json.dumps({'results': results['results']}, cls=BytesEncoder)))
 
 
+@app.get('/query_song_by_hash/{audio_hash}')
+async def query_song_by_hash(audio_hash: str):
+    data = globs.djv.db.query_song_with_hash(audio_hash.upper())
+    if data is None:
+        return JSONResponse({'exists': False})
+
+    return JSONResponse({
+        'song_name': data[0],
+        'song_id': data[1],
+        'fingerprinted': data[2],
+        'total_hashes': data[3]
+    })
+
+
 @app.get('/stats/service')
 async def service_stats():
     return JSONResponse({
-        "directory_scanning": globs.directory_scanning,
-        "inqueue_files": globs.inqueue_files,
-        "pending_files": globs.pending_files
+        'directory_scanning': globs.directory_scanning,
+        'inqueue_files': globs.inqueue_files,
+        'pending_files': globs.pending_files
     })
 
 
 @app.get('/stats/db')
 async def db_stats():
     return JSONResponse({
-        "fingerprints": globs.djv.db.get_num_fingerprints(),
-        "num_songs": globs.djv.db.get_num_songs()
+        'fingerprints': globs.djv.db.get_num_fingerprints(),
+        'num_songs': globs.djv.db.get_num_songs()
     })

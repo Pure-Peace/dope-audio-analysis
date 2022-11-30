@@ -4,8 +4,10 @@ import inspect
 from os import mkdir, path
 from genericpath import exists
 import os
+from tempfile import TemporaryFile
 from uuid import uuid1
 import aiofiles
+import aiohttp
 import filetype
 from fastapi.responses import JSONResponse
 import globs
@@ -81,6 +83,19 @@ async def fingerprint_file(readable, file_name: str, async_handle: bool = False)
 
     return (file_path, r.file_hash or file_hash,
             {'song_id': sid, 'song_type': r.file_type, 'song_name': song_name or r.song_name,  'file_hash': r.file_hash, 'hashes_count': hashes_count}), None
+
+
+async def fingerprint_url(url: str, async_handle: bool = False):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                with TemporaryFile(mode="wb+") as tmp:
+                    tmp.write(await resp.read())
+                    tmp.seek(0)
+                    return await fingerprint_file(tmp.read, url.split('/')[-1], async_handle=async_handle)
+
+            else:
+                return None, JSONResponse({"result": "req_failed", "data": await resp.text()})
 
 
 def create_dir(pat: str):

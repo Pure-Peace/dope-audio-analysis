@@ -64,6 +64,13 @@ class CommonDatabase(BaseDatabase, metaclass=abc.ABCMeta):
             count = cur.fetchone()[0] if cur.rowcount != 0 else 0
 
         return count
+    
+    def query_song_with_hash(self, hash: str) -> int:
+        with self.cursor() as cur:
+            cur.execute(self.SELECT_SONG_WITH_HASH, (hash,))
+            data = cur.fetchone()
+
+        return data
 
     def get_num_fingerprints(self) -> int:
         """
