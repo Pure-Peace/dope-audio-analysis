@@ -78,7 +78,7 @@ async def recognize_with_file(audio_file: UploadFile):
     return JSONResponse(json.loads(json.dumps({'results': results['results']}, cls=BytesEncoder)))
 
 
-@app.get('/recognize_with_url/{url}')
+@app.get('/recognize_with_url')
 async def recognize_with_url(url: str):
     data, err = await fingerprint_url(url)
     if err is not None:
